@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.tarasov.tic_tac_toe.screens.LoginRoute
 import com.tarasov.tic_tac_toe.ui.theme.TictactoeTheme
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
@@ -24,28 +25,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             TictactoeTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
+                    LoginRoute(
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    TictactoeTheme {
-        Greeting("Android")
     }
 }

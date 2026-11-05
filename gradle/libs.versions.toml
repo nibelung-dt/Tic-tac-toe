@@ -9,6 +9,8 @@ activityCompose = "1.13.0"
 kotlin = "2.2.10"
 composeBom = "2026.09.00"
 koin = "4.2.2"
+coroutinesTest = "1.11.0"
+turbine = "1.2.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,6 +33,10 @@ koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koin" }
 koin-android = { group = "io.insert-koin", name = "koin-android", version.ref = "koin" }
 koin-androidx-compose = { group = "io.insert-koin", name = "koin-androidx-compose", version.ref = "koin" }
 koin-androidx-compose-navigation = { group = "io.insert-koin", name = "koin-androidx-compose-navigation", version.ref = "koin" }
+koin-test-junit4 = { group = "io.insert-koin", name = "koin-test-junit4", version.ref = "koin" }
+androidx-core-testing = { group = "androidx.arch.core", name = "core-testing", version = "2.2.0" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
