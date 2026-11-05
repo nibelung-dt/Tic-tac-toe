@@ -1,11 +1,17 @@
 package com.tarasov.tic_tac_toe.data
 
-class LoginRepositoryImpl(): LoginRepository {
+import com.tarasov.tic_tac_toe.data.remote.LoginApi
+import com.tarasov.tic_tac_toe.data.remote.LoginRequest
+
+class LoginRepositoryImpl(
+    private val api: LoginApi,
+) : LoginRepository {
+
     override suspend fun login() {
-        TODO("Not yet implemented")
+        api.login(LoginRequest(login = "", password = ""))
     }
 
     override suspend fun registration() {
-        TODO("Not yet implemented")
+        api.registration(LoginRequest(login = "", password = ""))
     }
 }

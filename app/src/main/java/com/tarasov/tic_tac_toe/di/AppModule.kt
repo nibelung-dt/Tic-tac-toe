@@ -10,6 +10,8 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 
 val appModule = module {
+    includes(networkModule)
+
     viewModelOf(::MainViewModel)
     viewModelOf(::LoginViewModel)
     singleOf(::LoginRepositoryImpl) bind LoginRepository::class
