@@ -1,8 +1,11 @@
 package com.tarasov.tic_tac_toe.di
 
 import com.tarasov.tic_tac_toe.MainViewModel
+import com.tarasov.tic_tac_toe.data.LobbyRepository
+import com.tarasov.tic_tac_toe.data.LobbyRepositoryImpl
 import com.tarasov.tic_tac_toe.data.LoginRepository
 import com.tarasov.tic_tac_toe.data.LoginRepositoryImpl
+import com.tarasov.tic_tac_toe.screens.LobbyViewModel
 import com.tarasov.tic_tac_toe.screens.LoginViewModel
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
@@ -14,5 +17,7 @@ val appModule = module {
 
     viewModelOf(::MainViewModel)
     viewModelOf(::LoginViewModel)
+    viewModelOf(::LobbyViewModel)
     singleOf(::LoginRepositoryImpl) bind LoginRepository::class
+    singleOf(::LobbyRepositoryImpl) bind LobbyRepository::class
 }
