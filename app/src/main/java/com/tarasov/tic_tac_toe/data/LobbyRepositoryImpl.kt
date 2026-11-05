@@ -6,6 +6,10 @@ class LobbyRepositoryImpl(
     private val api: LobbyApi
 ): LobbyRepository {
     override suspend fun getListGamers(): List<Gamer> {
-        TODO("Not yet implemented")
+        return api.getListGamers()
+    }
+
+    override suspend fun inviteToGame(id: Long) {
+        api.inviteToGame(id)
     }
 }

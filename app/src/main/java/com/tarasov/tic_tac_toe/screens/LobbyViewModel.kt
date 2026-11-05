@@ -24,6 +24,7 @@ class LobbyViewModel(
         }
     }
 
-
-
+    suspend fun inviteToGame(id: Long) {
+        lobbyRepository.inviteToGame(id)
+    }
 }
