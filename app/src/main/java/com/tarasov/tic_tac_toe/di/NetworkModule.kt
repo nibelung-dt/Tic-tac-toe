@@ -12,9 +12,12 @@ import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 
 /**
- * Базовая точка входа API. Вынеси в BuildConfig / local.properties, когда появится реальный бэкенд.
+ * Базовая точка входа API приходит из BuildConfig:
+ * debug — http://10.0.2.2:8080/ (хост-машина из эмулятора),
+ * release — продовый HTTPS-эндпоинт.
  */
-private const val BASE_URL = "https://api.tictactoe.example.com/"
+// private val BASE_URL = BuildConfig.BASE_URL
+private val BASE_URL = "http://10.0.2.2:8080/"
 
 /**
  * Сетевой слой. Всё — синглтоны: OkHttp держит пул соединений,

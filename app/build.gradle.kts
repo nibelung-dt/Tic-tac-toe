@@ -21,7 +21,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            // 10.0.2.2 — алиас хост-машины из Android-эмулятора.
+            // На физическом устройстве: adb reverse tcp:8080 tcp:8080 и http://localhost:8080/
+            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/\"")
+        }
         release {
+            // TODO: заменить на реальный HTTPS-эндпоинт
+            buildConfigField("String", "BASE_URL", "\"https://api.tictactoe.example.com/\"")
             optimization {
                 enable = false
             }
