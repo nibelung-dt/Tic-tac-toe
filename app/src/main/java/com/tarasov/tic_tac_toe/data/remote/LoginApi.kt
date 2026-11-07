@@ -10,7 +10,7 @@ import retrofit2.http.POST
  */
 @Serializable
 data class LoginRequest(
-    @SerialName("login") val login: String,
+    @SerialName("username") val username: String,
     @SerialName("password") val password: String,
 )
 
@@ -20,8 +20,8 @@ data class LoginRequest(
 @Serializable
 data class LoginResponse(
     @SerialName("token") val token: String? = null,
-    @SerialName("userId") val userId: String? = null,
-    @SerialName("message") val message: String? = null,
+  //  @SerialName("userId") val userId: String? = null,
+  //  @SerialName("message") val message: String? = null,
 )
 
 /**
