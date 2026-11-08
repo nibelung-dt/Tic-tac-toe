@@ -1,6 +1,7 @@
 package com.tarasov.tic_tac_toe.di
 
 import com.tarasov.tic_tac_toe.BuildConfig
+import com.tarasov.tic_tac_toe.data.remote.LobbyApi
 import com.tarasov.tic_tac_toe.data.remote.LoginApi
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -65,4 +66,6 @@ val networkModule = module {
     }
 
     single<LoginApi> { get<Retrofit>().create(LoginApi::class.java) }
+
+    single<LobbyApi> { get<Retrofit>().create(LobbyApi::class.java) }
 }

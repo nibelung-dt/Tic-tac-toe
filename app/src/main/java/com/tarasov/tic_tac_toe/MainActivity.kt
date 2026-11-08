@@ -7,17 +7,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.tarasov.tic_tac_toe.screens.LoginRoute
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.rememberNavController
+import com.tarasov.tic_tac_toe.navigation.Routes
+import com.tarasov.tic_tac_toe.navigation.authGraph
+import com.tarasov.tic_tac_toe.navigation.lobbyGraph
 import com.tarasov.tic_tac_toe.ui.theme.TictactoeTheme
-import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class MainActivity : ComponentActivity() {
-
-    private val viewModel: MainViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,9 +23,23 @@ class MainActivity : ComponentActivity() {
         setContent {
             TictactoeTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    LoginRoute(
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    val navController = rememberNavController()
+
+                    NavHost(
+                        navController = navController,
+                        startDestination = Routes.LOGIN,
+                        modifier = Modifier.padding(innerPadding),
+                    ) {
+                        authGraph(
+                            onAuthenticated = {
+                                navController.navigate(Routes.LOBBY) {
+                                    popUpTo(Routes.LOGIN) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            },
+                        )
+                        lobbyGraph()
+                    }
                 }
             }
         }

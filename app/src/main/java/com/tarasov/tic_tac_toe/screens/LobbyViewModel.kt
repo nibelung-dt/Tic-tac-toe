@@ -4,27 +4,27 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tarasov.tic_tac_toe.data.Gamer
 import com.tarasov.tic_tac_toe.data.LobbyRepository
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 
 class LobbyViewModel(
     private val lobbyRepository: LobbyRepository,
-    dispatcher: CoroutineDispatcher = Dispatchers.IO
 ): ViewModel() {
 
     private val _listUsers = MutableStateFlow<List<Gamer>>(emptyList())
     val listUsers = _listUsers
 
     init {
-        viewModelScope.launch(dispatcher) {
-            _listUsers.value = lobbyRepository.getListGamers()
+        viewModelScope.launch {
+            // _listUsers.value = lobbyRepository.getListGamers()
+            _listUsers.value = emptyList() //TODO это заглушка
         }
     }
 
-    suspend fun inviteToGame(id: Long) {
-        lobbyRepository.inviteToGame(id)
+    fun inviteToGame(id: Long) {
+        viewModelScope.launch {
+            lobbyRepository.inviteToGame(id)
+        }
     }
 }
