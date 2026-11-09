@@ -17,8 +17,7 @@ class LobbyViewModel(
 
     init {
         viewModelScope.launch {
-            // _listUsers.value = lobbyRepository.getListGamers()
-            _listUsers.value = emptyList() //TODO это заглушка
+            _listUsers.value = lobbyRepository.getActiveUsers()
         }
     }
 

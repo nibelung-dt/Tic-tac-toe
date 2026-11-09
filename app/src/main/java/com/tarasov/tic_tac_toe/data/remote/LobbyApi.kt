@@ -3,6 +3,7 @@ package com.tarasov.tic_tac_toe.data.remote
 import com.tarasov.tic_tac_toe.data.Gamer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import retrofit2.http.GET
 
 
 @Serializable
@@ -13,6 +14,8 @@ data class LobbyResponse( //TODO доработать
 )
 
 interface LobbyApi {
-    fun getListGamers(): List<Gamer>
-    fun inviteToGame(id: Long)
+    @GET("lobby/getActiveUsers")
+    suspend fun getActiveUsers(): List<Gamer>
+    // @POST("lobby/invite")
+    // suspend fun inviteToGame(@Body id: Long)
 }

@@ -58,10 +58,10 @@ fun LobbyScreen(
             )
         } else {
             LazyColumn {
-                items(items = users, key = { it.id }) { gamer ->
+                items(items = users) { gamer ->
                     User(
                         gamer = gamer,
-                        onInviteClick = { onInviteClick(gamer.id) },
+                        onInviteClick = {  },
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                 }
@@ -104,8 +104,8 @@ private fun LobbyScreenPreview() {
     TictactoeTheme {
         LobbyScreen(
             users = listOf(
-                Gamer(id = 1, username = "User 1"),
-                Gamer(id = 2, username = "User 2"),
+                Gamer(username = "User 1"),
+                Gamer(username = "User 2"),
             ),
             onInviteClick = {},
         )
