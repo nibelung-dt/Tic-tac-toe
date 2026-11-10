@@ -7,11 +7,13 @@ class AuthRepositoryImpl(
     private val api: LoginApi,
 ) : AuthRepository {
 
-    override suspend fun login(username: String, password: String) {
-        api.login(LoginRequest(username = username, password = password))
-    }
+    override suspend fun login(username: String, password: String): ApiResult<Unit> =
+        safeApiCall {
+            api.login(LoginRequest(username = username, password = password))
+        }
 
-    override suspend fun registration(username: String, password: String) {
-        api.registration(LoginRequest(username = username, password = password))
-    }
+    override suspend fun registration(username: String, password: String): ApiResult<Unit> =
+        safeApiCall {
+            api.registration(LoginRequest(username = username, password = password))
+        }
 }

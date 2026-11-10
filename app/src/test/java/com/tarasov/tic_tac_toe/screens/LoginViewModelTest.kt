@@ -1,6 +1,7 @@
 package com.tarasov.tic_tac_toe.screens
 
 import app.cash.turbine.test
+import com.tarasov.tic_tac_toe.data.ApiResult
 import com.tarasov.tic_tac_toe.data.AuthRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -15,13 +16,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Before
 import org.junit.Test
-import retrofit2.HttpException
-import retrofit2.Response
-import java.net.UnknownHostException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
@@ -42,8 +38,8 @@ class LoginViewModelTest {
     // region Fake
 
     private class FakeAuthRepository(
-        var loginResult: Result<Unit> = Result.success(Unit),
-        var registrationResult: Result<Unit> = Result.success(Unit),
+        var loginResult: ApiResult<Unit> = ApiResult.Success(Unit),
+        var registrationResult: ApiResult<Unit> = ApiResult.Success(Unit),
     ) : AuthRepository {
         var loginCalls = 0
         var registrationCalls = 0
@@ -51,17 +47,17 @@ class LoginViewModelTest {
         val loginRequests = mutableListOf<Pair<String, String>>()
         val registrationRequests = mutableListOf<Pair<String, String>>()
 
-        override suspend fun login(login: String, password: String) {
+        override suspend fun login(username: String, password: String): ApiResult<Unit> {
             loginCalls++
-            loginRequests += login to password
+            loginRequests += username to password
             loginGate?.await()
-            loginResult.getOrThrow()
+            return loginResult
         }
 
-        override suspend fun registration(login: String, password: String) {
+        override suspend fun registration(username: String, password: String): ApiResult<Unit> {
             registrationCalls++
-            registrationRequests += login to password
-            registrationResult.getOrThrow()
+            registrationRequests += username to password
+            return registrationResult
         }
     }
 
@@ -122,7 +118,9 @@ class LoginViewModelTest {
 
     @Test
     fun `typing clears previous error message`() = runTest(dispatcher) {
-        val repo = FakeAuthRepository(loginResult = Result.failure(IllegalStateException("Нет сети")))
+        val repo = FakeAuthRepository(
+            loginResult = ApiResult.Unknown(IllegalStateException("Нет сети")),
+        )
         val vm = LoginViewModel(repo)
         vm.onLoginChange("player1")
         vm.onPasswordChange("secret")
@@ -288,7 +286,7 @@ class LoginViewModelTest {
     @Test
     fun `login failure shows error message and does not call onSuccess`() = runTest(dispatcher) {
         val repo = FakeAuthRepository(
-            loginResult = Result.failure(IllegalStateException("Неверный пароль")),
+            loginResult = ApiResult.HttpError(code = 401),
         )
         val vm = LoginViewModel(repo)
         vm.onLoginChange("player1")
@@ -300,12 +298,27 @@ class LoginViewModelTest {
 
         assertFalse(successCalled)
         assertFalse(vm.uiState.value.isLoading)
-        assertEquals("Неверный пароль", vm.uiState.value.errorMessage)
+        assertEquals("Неверный логин или пароль", vm.uiState.value.errorMessage)
     }
 
     @Test
-    fun `login failure without message falls back to default text`() = runTest(dispatcher) {
-        val repo = FakeAuthRepository(loginResult = Result.failure(RuntimeException()))
+    fun `invalid response shows invalid response message`() = runTest(dispatcher) {
+        val repo = FakeAuthRepository(loginResult = ApiResult.InvalidResponse)
+        val vm = LoginViewModel(repo)
+        vm.onLoginChange("player1")
+        vm.onPasswordChange("secret")
+
+        vm.onLoginClick {}
+        advanceUntilIdle()
+
+        assertEquals("Некорректный ответ сервера", vm.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun `unknown error shows cause message`() = runTest(dispatcher) {
+        val repo = FakeAuthRepository(
+            loginResult = ApiResult.Unknown(IllegalStateException("Не удалось выполнить вход")),
+        )
         val vm = LoginViewModel(repo)
         vm.onLoginChange("player1")
         vm.onPasswordChange("secret")
@@ -319,7 +332,7 @@ class LoginViewModelTest {
     @Test
     fun `login failure keeps entered credentials`() = runTest(dispatcher) {
         val repo = FakeAuthRepository(
-            loginResult = Result.failure(IllegalStateException("Ошибка")),
+            loginResult = ApiResult.HttpError(code = 500),
         )
         val vm = LoginViewModel(repo)
         vm.onLoginChange("player1")
@@ -335,7 +348,7 @@ class LoginViewModelTest {
     @Test
     fun `registration failure shows error message`() = runTest(dispatcher) {
         val repo = FakeAuthRepository(
-            registrationResult = Result.failure(IllegalStateException("Уже существует")),
+            registrationResult = ApiResult.HttpError(code = 409),
         )
         val vm = LoginViewModel(repo)
         vm.onLoginChange("player1")
@@ -344,23 +357,16 @@ class LoginViewModelTest {
         vm.onRegisterClick {}
         advanceUntilIdle()
 
-        assertEquals("Уже существует", vm.uiState.value.errorMessage)
+        assertEquals("Такой пользователь уже существует", vm.uiState.value.errorMessage)
     }
 
     // endregion
 
     // region HTTP-ошибки
 
-    private fun httpException(code: Int): HttpException = HttpException(
-        Response.error<Any>(
-            code,
-            "".toResponseBody("application/json".toMediaType()),
-        ),
-    )
-
     @Test
     fun `401 shows invalid credentials message`() = runTest(dispatcher) {
-        val repo = FakeAuthRepository(loginResult = Result.failure(httpException(401)))
+        val repo = FakeAuthRepository(loginResult = ApiResult.HttpError(code = 401))
         val vm = LoginViewModel(repo)
         vm.onLoginChange("ivan")
         vm.onPasswordChange("ivan")
@@ -374,7 +380,7 @@ class LoginViewModelTest {
 
     @Test
     fun `409 shows user already exists message`() = runTest(dispatcher) {
-        val repo = FakeAuthRepository(registrationResult = Result.failure(httpException(409)))
+        val repo = FakeAuthRepository(registrationResult = ApiResult.HttpError(code = 409))
         val vm = LoginViewModel(repo)
         vm.onLoginChange("ivan")
         vm.onPasswordChange("ivan")
@@ -387,7 +393,7 @@ class LoginViewModelTest {
 
     @Test
     fun `500 shows server unavailable message`() = runTest(dispatcher) {
-        val repo = FakeAuthRepository(loginResult = Result.failure(httpException(503)))
+        val repo = FakeAuthRepository(loginResult = ApiResult.HttpError(code = 503))
         val vm = LoginViewModel(repo)
         vm.onLoginChange("ivan")
         vm.onPasswordChange("ivan")
@@ -399,8 +405,8 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `unmapped http code shows generic message`() = runTest(dispatcher) {
-        val repo = FakeAuthRepository(loginResult = Result.failure(httpException(404)))
+    fun `404 shows not found message`() = runTest(dispatcher) {
+        val repo = FakeAuthRepository(loginResult = ApiResult.HttpError(code = 404))
         val vm = LoginViewModel(repo)
         vm.onLoginChange("ivan")
         vm.onPasswordChange("ivan")
@@ -408,13 +414,26 @@ class LoginViewModelTest {
         vm.onLoginClick {}
         advanceUntilIdle()
 
-        assertEquals("Ошибка запроса (404)", vm.uiState.value.errorMessage)
+        assertEquals("Запрошенные данные не найдены", vm.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun `unmapped http code falls back to generic message`() = runTest(dispatcher) {
+        val repo = FakeAuthRepository(loginResult = ApiResult.HttpError(code = 418))
+        val vm = LoginViewModel(repo)
+        vm.onLoginChange("ivan")
+        vm.onPasswordChange("ivan")
+
+        vm.onLoginClick {}
+        advanceUntilIdle()
+
+        assertEquals("Ошибка запроса (418)", vm.uiState.value.errorMessage)
     }
 
     @Test
     fun `io error shows no connection message`() = runTest(dispatcher) {
         val repo = FakeAuthRepository(
-            loginResult = Result.failure(UnknownHostException("10.0.2.2")),
+            loginResult = ApiResult.NoConnection,
         )
         val vm = LoginViewModel(repo)
         vm.onLoginChange("ivan")
@@ -428,7 +447,7 @@ class LoginViewModelTest {
 
     @Test
     fun `401 does not call onSuccess`() = runTest(dispatcher) {
-        val repo = FakeAuthRepository(loginResult = Result.failure(httpException(401)))
+        val repo = FakeAuthRepository(loginResult = ApiResult.HttpError(code = 401))
         val vm = LoginViewModel(repo)
         vm.onLoginChange("ivan")
         vm.onPasswordChange("ivan")
@@ -447,7 +466,7 @@ class LoginViewModelTest {
     @Test
     fun `onCancelClick clears state`() = runTest(dispatcher) {
         val repo = FakeAuthRepository(
-            loginResult = Result.failure(IllegalStateException("Ошибка")),
+            loginResult = ApiResult.HttpError(code = 401),
         )
         val vm = LoginViewModel(repo)
         vm.onLoginChange("player1")

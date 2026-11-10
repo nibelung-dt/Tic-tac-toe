@@ -2,15 +2,14 @@ package com.tarasov.tic_tac_toe.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tarasov.tic_tac_toe.data.ApiResult
 import com.tarasov.tic_tac_toe.data.AuthRepository
-import kotlinx.coroutines.CancellationException
+import com.tarasov.tic_tac_toe.ui.toUserMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
-import java.io.IOException
 
 /**
  * Единое состояние экрана логина. UI полностью stateless — рисует то, что здесь лежит.
@@ -45,14 +44,14 @@ class LoginViewModel(
 
     fun onLoginClick(onSuccess: () -> Unit) = authenticate(onSuccess) {
         authRepository.login(
-            login = currentState.login,
+            username = currentState.login,
             password = currentState.password,
         )
     }
 
     fun onRegisterClick(onSuccess: () -> Unit) = authenticate(onSuccess) {
         authRepository.registration(
-            login = currentState.login,
+            username = currentState.login,
             password = currentState.password,
         )
     }
@@ -65,50 +64,47 @@ class LoginViewModel(
      * Общая логика для логина и регистрации:
      * защита от двойного клика, индикатор загрузки, единая обработка ошибок.
      */
-    private fun authenticate(onSuccess: () -> Unit, action: suspend () -> Unit) {
+    private fun authenticate(
+        onSuccess: () -> Unit,
+        action: suspend () -> ApiResult<Unit>,
+    ) {
         if (currentState.isLoading || !currentState.canSubmit) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            try {
-                action()
-                _uiState.value = LoginUiState()
-                onSuccess()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: HttpException) {
-                _uiState.update {
-                    it.copy(isLoading = false, errorMessage = e.toUserMessage())
+
+            when (val result = action()) {
+                is ApiResult.Success -> {
+                    _uiState.value = LoginUiState()
+                    onSuccess()
                 }
-            } catch (_: IOException) {
-                // Нет сети, таймаут, DNS, обрыв соединения
-                _uiState.update {
-                    it.copy(isLoading = false, errorMessage = NO_CONNECTION_ERROR)
+
+                is ApiResult.HttpError -> _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = result.toErrorMessage(),
+                    )
                 }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(isLoading = false, errorMessage = e.message ?: DEFAULT_ERROR)
+
+                else -> _uiState.update {
+                    it.copy(isLoading = false, errorMessage = result.toUserMessage() ?: DEFAULT_ERROR)
                 }
             }
         }
     }
 
     /**
-     * Приводим HTTP-код к тексту, понятному пользователю.
-     * HttpException.message — это "HTTP 401 Client Error", в UI такое показывать нельзя.
+     * Для логина важны специфичные тексты: 401 означает «неверный пароль», а не «сессия истекла».
      */
-    private fun HttpException.toUserMessage(): String = when (code()) {
+    private fun ApiResult.HttpError.toErrorMessage(): String = when (code) {
         401 -> INVALID_CREDENTIALS_ERROR
         409 -> USER_EXISTS_ERROR
-        in 500..599 -> SERVER_ERROR
-        else -> "Ошибка запроса (${code()})"
+        else -> toUserMessage() ?: DEFAULT_ERROR
     }
 
     private companion object {
         const val DEFAULT_ERROR = "Не удалось выполнить вход"
         const val INVALID_CREDENTIALS_ERROR = "Неверный логин или пароль"
         const val USER_EXISTS_ERROR = "Такой пользователь уже существует"
-        const val SERVER_ERROR = "Сервер недоступен, попробуйте позже"
-        const val NO_CONNECTION_ERROR = "Нет подключения к интернету"
     }
 }

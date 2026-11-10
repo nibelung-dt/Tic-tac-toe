@@ -1,5 +1,7 @@
 package com.tarasov.tic_tac_toe.screens
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,16 +12,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.tarasov.tic_tac_toe.data.Gamer
+import com.tarasov.tic_tac_toe.data.User
 import com.tarasov.tic_tac_toe.ui.theme.TictactoeTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -31,37 +36,48 @@ fun LobbyRoute(
     modifier: Modifier = Modifier,
     viewModel: LobbyViewModel = koinViewModel(),
 ) {
-    val users by viewModel.listUsers.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LobbyScreen(
-        users = users,
+        uiState = uiState,
         onInviteClick = { id -> viewModel.inviteToGame(id) },
+        onRetryClick = viewModel::loadActiveUsers,
         modifier = modifier,
     )
 }
 
 /**
- * Чистый stateless UI: список игроков + кнопки приглашения.
+ * Чистый stateless UI: загрузка / ошибка / пустой список / список игроков.
  */
 @Composable
 fun LobbyScreen(
-    users: List<Gamer>,
+    uiState: LobbyUiState,
     onInviteClick: (Long) -> Unit,
+    onRetryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxSize()) {
-        if (users.isEmpty()) {
-            Text(
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        when {
+            uiState.isLoading -> CircularProgressIndicator()
+
+            uiState.errorMessage != null -> ErrorState(
+                message = uiState.errorMessage,
+                onRetryClick = onRetryClick,
+            )
+
+            uiState.users.isEmpty() -> Text(
                 text = "Пока никого нет в сети",
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(16.dp),
             )
-        } else {
-            LazyColumn {
-                items(items = users) { gamer ->
-                    User(
-                        gamer = gamer,
-                        onInviteClick = {  },
+
+            else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(items = uiState.users) { user ->
+                    UserItem(
+                        user = user,
+                        onInviteClick = { onInviteClick(0L) },
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                 }
@@ -71,8 +87,31 @@ fun LobbyScreen(
 }
 
 @Composable
-fun User(
-    gamer: Gamer,
+private fun ErrorState(
+    message: String,
+    onRetryClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center,
+        )
+        OutlinedButton(onClick = onRetryClick) {
+            Text("Повторить")
+        }
+    }
+}
+
+@Composable
+fun UserItem(
+    user: User,
     onInviteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -83,7 +122,7 @@ fun User(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = gamer.username,
+            text = user.username,
             style = MaterialTheme.typography.bodyMedium,
         )
         Button(
@@ -103,11 +142,26 @@ fun User(
 private fun LobbyScreenPreview() {
     TictactoeTheme {
         LobbyScreen(
-            users = listOf(
-                Gamer(username = "User 1"),
-                Gamer(username = "User 2"),
+            uiState = LobbyUiState(
+                users = listOf(
+                    User(username = "User 1"),
+                    User(username = "User 2"),
+                ),
             ),
             onInviteClick = {},
+            onRetryClick = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Error")
+@Composable
+private fun LobbyScreenErrorPreview() {
+    TictactoeTheme {
+        LobbyScreen(
+            uiState = LobbyUiState(errorMessage = "Нет подключения к интернету"),
+            onInviteClick = {},
+            onRetryClick = {},
         )
     }
 }
