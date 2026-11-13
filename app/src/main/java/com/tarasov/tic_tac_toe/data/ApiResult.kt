@@ -33,6 +33,18 @@ sealed interface ApiResult<out T> {
 }
 
 /**
+ * Преобразует успешное значение, не трогая ошибки.
+ * Удобно, когда слой данных должен вернуть Unit, но по пути сохранить токен.
+ */
+inline fun <T, R> ApiResult<T>.map(transform: (T) -> R): ApiResult<R> = when (this) {
+    is ApiResult.Success -> ApiResult.Success(transform(data))
+    is ApiResult.HttpError -> this
+    ApiResult.NoConnection -> ApiResult.NoConnection
+    ApiResult.InvalidResponse -> ApiResult.InvalidResponse
+    is ApiResult.Unknown -> this
+}
+
+/**
  * Оборачивает suspend-вызов Retrofit в [ApiResult].
  *
  * Важно: [CancellationException] пробрасывается дальше, а не превращается в ошибку.

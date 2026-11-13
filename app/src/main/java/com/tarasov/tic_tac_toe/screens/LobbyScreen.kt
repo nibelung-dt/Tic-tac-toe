@@ -56,30 +56,59 @@ fun LobbyScreen(
     onRetryClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        when {
-            uiState.isLoading -> CircularProgressIndicator()
-
-            uiState.errorMessage != null -> ErrorState(
-                message = uiState.errorMessage,
-                onRetryClick = onRetryClick,
-            )
-
-            uiState.users.isEmpty() -> Text(
-                text = "Пока никого нет в сети",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-
-            else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(items = uiState.users) { user ->
-                    UserItem(
-                        user = user,
-                        onInviteClick = { onInviteClick(0L) },
+    Column(modifier = modifier.fillMaxSize()) {
+        // Приветствие из WebSocket и ошибка сокета — над списком игроков.
+        if (uiState.greeting != null || uiState.socketError != null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                uiState.greeting?.let { greeting ->
+                    Text(
+                        text = greeting,
+                        style = MaterialTheme.typography.titleMedium,
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
+                }
+                uiState.socketError?.let { error ->
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentAlignment = Alignment.Center,
+        ) {
+            when {
+                uiState.isLoading -> CircularProgressIndicator()
+
+                uiState.errorMessage != null -> ErrorState(
+                    message = uiState.errorMessage,
+                    onRetryClick = onRetryClick,
+                )
+
+                uiState.users.isEmpty() -> Text(
+                    text = "Пока никого нет в сети",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+
+                else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    items(items = uiState.users) { user ->
+                        UserItem(
+                            user = user,
+                            onInviteClick = { onInviteClick(0L) },
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
                 }
             }
         }
