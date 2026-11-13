@@ -7,7 +7,6 @@ import com.tarasov.tic_tac_toe.data.ApiResult
 import com.tarasov.tic_tac_toe.data.WebsocketEvent
 import com.tarasov.tic_tac_toe.data.WebsocketRepository
 import com.tarasov.tic_tac_toe.data.LobbyRepository
-import com.tarasov.tic_tac_toe.data.User
 import com.tarasov.tic_tac_toe.ui.toUserMessage
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,17 +15,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class LobbyUiState(
-    val users: List<User> = emptyList(),
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    /** true, если сервер ответил 401 и сессия больше не действительна. */
-    val isSessionExpired: Boolean = false,
-    /** Приветствие, которое сервер присылает по WebSocket сразу после авторизации. */
-    val greeting: String? = null,
-    /** Ошибка WebSocket-соединения (не влияет на HTTP-часть экрана). */
-    val socketError: String? = null,
-)
 
 class LobbyViewModel(
     private val lobbyRepository: LobbyRepository,

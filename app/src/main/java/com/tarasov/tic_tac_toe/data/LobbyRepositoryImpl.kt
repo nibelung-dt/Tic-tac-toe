@@ -5,6 +5,8 @@ import com.tarasov.tic_tac_toe.data.remote.LobbyApi
 class LobbyRepositoryImpl(
     private val api: LobbyApi
 ) : LobbyRepository {
+    override suspend fun getUsers(): ApiResult<List<User>> =
+        safeApiCall { api.getUsers() }
 
     override suspend fun getActiveUsers(): ApiResult<List<User>> =
         safeApiCall { api.getActiveUsers() }

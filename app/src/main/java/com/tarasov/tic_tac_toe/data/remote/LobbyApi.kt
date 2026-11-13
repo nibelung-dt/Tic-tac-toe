@@ -16,6 +16,9 @@ interface LobbyApi {
     @GET("lobby/getActiveUsers")
     suspend fun getActiveUsers(): List<User>
 
+    @GET("lobby/getUsers")
+    suspend fun getUsers(): List<User>
+
     // @POST("lobby/invite")
     // suspend fun inviteToGame(@Body id: Long)
 }
