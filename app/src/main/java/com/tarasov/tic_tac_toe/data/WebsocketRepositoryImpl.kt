@@ -1,6 +1,7 @@
 package com.tarasov.tic_tac_toe.data
 
-import com.tarasov.tic_tac_toe.data.remote.ws.GreetingDto
+import com.tarasov.tic_tac_toe.data.remote.ws.Greeting
+import com.tarasov.tic_tac_toe.data.remote.ws.LobbyEvent
 import com.tarasov.tic_tac_toe.data.remote.ws.StompClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,17 +54,27 @@ class WebsocketRepositoryImpl(
 
     private fun handleClientEvent(event: StompClient.Event) {
         when (event) {
-            StompClient.Event.Connected -> {
+            is StompClient.Event.Connected -> {
                 _events.tryEmit(WebsocketEvent.Connected)
 
-                // @SubscribeMapping("/greeting"): сервер отвечает прямо в эту сессию,
-                // через брокер сообщение не идёт — подписки на /topic не нужны.
+                // @SubscribeMapping: сервер отвечает прямо в эту сессию,
+                // /app — префикс приложения, заданный в конфигурации Spring.
                 stompClient.subscribe(GREETING_DESTINATION)
+                stompClient.subscribe(LOBBY_DESTINATION)
             }
 
-            is StompClient.Event.Message -> {
-                if (event.destination == GREETING_DESTINATION) {
+            is StompClient.Event.Message -> when (event.destination) {
+                GREETING_DESTINATION -> {
                     _events.tryEmit(WebsocketEvent.Greeting(decodeGreeting(event.body)))
+                }
+
+                LOBBY_DESTINATION -> {
+                    val lobbyEvent = decodeLobbyEvent(event.body)
+                    if (lobbyEvent != null) {
+                        _events.tryEmit(WebsocketEvent.LobbyEventReceived(lobbyEvent))
+                    } else {
+                        _events.tryEmit(WebsocketEvent.Error("Не удалось разобрать событие лобби"))
+                    }
                 }
             }
 
@@ -71,21 +82,26 @@ class WebsocketRepositoryImpl(
                 WebsocketEvent.Error(event.reason ?: "Ошибка WebSocket"),
             )
 
-            StompClient.Event.Disconnected -> _events.tryEmit(WebsocketEvent.Disconnected)
+            is StompClient.Event.Disconnected -> _events.tryEmit(WebsocketEvent.Disconnected)
         }
     }
 
     /**
      * Бэкенд присылает JSON вида {"content": "Hello, ..."}.
-     * Если поле названо иначе — показываем сырое тело, чтобы сообщение не пропало.
+     * Если сообщение не удалось разобрать — показываем сырое тело, чтобы оно не пропало.
      */
     private fun decodeGreeting(body: String): String =
-        runCatching { json.decodeFromString(GreetingDto.serializer(), body) }
+        runCatching { json.decodeFromString(Greeting.serializer(), body) }
             .getOrNull()
-            ?.displayText
+            ?.content
             ?: body
+
+    private fun decodeLobbyEvent(body: String): LobbyEvent? =
+        runCatching { json.decodeFromString(LobbyEvent.serializer(), body) }
+            .getOrNull()
 
     private companion object {
         const val GREETING_DESTINATION = "/app/greeting"
+        const val LOBBY_DESTINATION = "/app/lobby"
     }
 }

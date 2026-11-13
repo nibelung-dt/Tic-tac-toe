@@ -86,6 +86,10 @@ class LobbyViewModel(
                         it.copy(greeting = event.text, socketError = null)
                     }
 
+                    is WebsocketEvent.LobbyEventReceived -> _uiState.update {
+                        it.applyLobbyEvent(event.lobbyEvent)
+                    }
+
                     is WebsocketEvent.Error -> _uiState.update {
                         it.copy(socketError = event.message)
                     }
