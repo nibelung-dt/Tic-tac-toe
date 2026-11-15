@@ -9,8 +9,11 @@ import com.tarasov.tic_tac_toe.data.LobbyRepository
 import com.tarasov.tic_tac_toe.data.LobbyRepositoryImpl
 import com.tarasov.tic_tac_toe.data.AuthRepository
 import com.tarasov.tic_tac_toe.data.AuthRepositoryImpl
+import com.tarasov.tic_tac_toe.data.GameRepository
+import com.tarasov.tic_tac_toe.data.GameRepositoryImpl
 import com.tarasov.tic_tac_toe.screens.LobbyViewModel
 import com.tarasov.tic_tac_toe.screens.LoginViewModel
+import com.tarasov.tic_tac_toe.screens.gameScreen.GameViewModel
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.bind
@@ -22,8 +25,10 @@ val appModule = module {
     viewModelOf(::MainViewModel)
     viewModelOf(::LoginViewModel)
     viewModelOf(::LobbyViewModel)
+    viewModelOf(::GameViewModel)
     singleOf(::AuthRepositoryImpl) bind AuthRepository::class
     singleOf(::LobbyRepositoryImpl) bind LobbyRepository::class
+    singleOf(::GameRepositoryImpl) bind GameRepository::class
 
     // JWT текущей сессии: логин сохраняет, WebSocket-клиент читает.
     single<AuthTokenStore> { InMemoryAuthTokenStore() }

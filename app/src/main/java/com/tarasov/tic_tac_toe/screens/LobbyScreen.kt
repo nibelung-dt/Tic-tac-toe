@@ -33,6 +33,7 @@ import org.koin.androidx.compose.koinViewModel
  */
 @Composable
 fun LobbyRoute(
+    onEnterToGame: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: LobbyViewModel = koinViewModel(),
 ) {
@@ -42,7 +43,8 @@ fun LobbyRoute(
         uiState = uiState,
         onInviteClick = { id -> viewModel.inviteToGame(id) },
         onRetryClick = viewModel::loadActiveUsers,
-        modifier = modifier,
+        onEnterToGame = onEnterToGame,
+        modifier = modifier
     )
 }
 
@@ -54,6 +56,7 @@ fun LobbyScreen(
     uiState: LobbyUiState,
     onInviteClick: (Long) -> Unit,
     onRetryClick: () -> Unit,
+    onEnterToGame: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -106,6 +109,7 @@ fun LobbyScreen(
                         UserItem(
                             user = user,
                             onInviteClick = { onInviteClick(0L) },
+                            onEnterToGame = { onEnterToGame() }
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                     }
@@ -140,9 +144,10 @@ private fun ErrorState(
 
 @Composable
 fun UserItem(
+    modifier: Modifier = Modifier,
     user: User,
     onInviteClick: () -> Unit,
-    modifier: Modifier = Modifier,
+    onEnterToGame: () -> Unit
 ) {
     Row(
         modifier = modifier
@@ -163,6 +168,16 @@ fun UserItem(
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
+
+        Button(
+            modifier = Modifier,
+            onClick = onEnterToGame
+        ) {
+            Text(
+                text = "войти в игру",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
     }
 }
 
@@ -179,6 +194,7 @@ private fun LobbyScreenPreview() {
             ),
             onInviteClick = {},
             onRetryClick = {},
+            onEnterToGame = {}
         )
     }
 }
@@ -191,6 +207,7 @@ private fun LobbyScreenErrorPreview() {
             uiState = LobbyUiState(errorMessage = "Нет подключения к интернету"),
             onInviteClick = {},
             onRetryClick = {},
+            onEnterToGame = {}
         )
     }
 }

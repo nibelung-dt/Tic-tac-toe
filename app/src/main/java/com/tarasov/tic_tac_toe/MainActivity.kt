@@ -38,7 +38,9 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                         )
-                        lobbyGraph()
+                        lobbyGraph(
+                            onEnterToGame = { navController.navigate(Routes.GAME) },
+                        )
                     }
                 }
             }
