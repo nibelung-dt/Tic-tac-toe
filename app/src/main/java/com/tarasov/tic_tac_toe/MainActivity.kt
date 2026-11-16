@@ -12,6 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 import com.tarasov.tic_tac_toe.navigation.Routes
 import com.tarasov.tic_tac_toe.navigation.authGraph
+import com.tarasov.tic_tac_toe.navigation.gameGraph
 import com.tarasov.tic_tac_toe.navigation.lobbyGraph
 import com.tarasov.tic_tac_toe.ui.theme.TictactoeTheme
 
@@ -40,6 +41,9 @@ class MainActivity : ComponentActivity() {
                         )
                         lobbyGraph(
                             onEnterToGame = { navController.navigate(Routes.GAME) },
+                        )
+                        gameGraph(
+                            onExitFromGame = { navController.navigate(Routes.LOBBY) },
                         )
                     }
                 }

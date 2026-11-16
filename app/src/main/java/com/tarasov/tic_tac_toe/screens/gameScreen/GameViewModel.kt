@@ -6,13 +6,21 @@ import kotlinx.coroutines.flow.StateFlow
 
 class GameViewModel(): ViewModel() {
     //TODO StateFlow или SharedFlow ?
-    private val _gameState: MutableStateFlow<List<List<Int>>> = MutableStateFlow(emptyList())
+    private val _gameState: MutableStateFlow<GameState> = MutableStateFlow(GameState())
   //  val gameState: StateFlow<List<List<Int>>> = _gameState
-    val gameState: MutableStateFlow<List<List<Int>>> = _gameState
+    val gameState: StateFlow<GameState> = _gameState
 
-    private val testList = listOf(listOf(1, 0, 2), listOf(0, 0, 2), listOf(1, 1, 2))
+  //  private val testList = listOf(listOf(1, 0, 2), listOf(0, 0, 2), listOf(1, 1, 2))
 
     init {
-        gameState.value = testList
+       // val x = CellState
+        val test = GameState(board = listOf(
+            CellType.O, CellType.EMPTY, CellType.O,
+            CellType.EMPTY, CellType.X, CellType.EMPTY,
+            CellType.EMPTY, CellType.EMPTY, CellType.X
+            )
+        )
+        _gameState.value = test
+
     }
 }

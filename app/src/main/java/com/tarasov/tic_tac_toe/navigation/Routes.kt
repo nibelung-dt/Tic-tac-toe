@@ -4,7 +4,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.tarasov.tic_tac_toe.screens.LobbyRoute
 import com.tarasov.tic_tac_toe.screens.LoginRoute
-import com.tarasov.tic_tac_toe.screens.gameScreen.GameScreen
+import com.tarasov.tic_tac_toe.screens.gameScreen.GameScreenRoute
 
 /**
  * Единый реестр маршрутов. Строки-константы вместо магии в местах вызова.
@@ -26,12 +26,18 @@ fun NavGraphBuilder.authGraph(
 }
 
 fun NavGraphBuilder.lobbyGraph(
-    onEnterToGame: () -> Unit,
+    onEnterToGame: () -> Unit
 ) {
     composable(Routes.LOBBY) {
         LobbyRoute(onEnterToGame = onEnterToGame)
     }
+
+}
+
+fun NavGraphBuilder.gameGraph(
+    onExitFromGame: () -> Unit
+) {
     composable(Routes.GAME) {
-        GameScreen()
+        GameScreenRoute(onExitFromGame = onExitFromGame)
     }
 }
