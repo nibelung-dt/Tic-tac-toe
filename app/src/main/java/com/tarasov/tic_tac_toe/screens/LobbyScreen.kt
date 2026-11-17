@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.tarasov.tic_tac_toe.data.PresenceStatus
 import com.tarasov.tic_tac_toe.data.User
 import com.tarasov.tic_tac_toe.ui.theme.TictactoeTheme
 import org.koin.androidx.compose.koinViewModel
@@ -159,6 +160,7 @@ fun UserItem(
             text = user.username,
             style = MaterialTheme.typography.bodyMedium,
         )
+        //TODO не нужно показывать эту кнопку для авторизованного пользователя
         Button(
             onClick = onInviteClick,
             modifier = Modifier,
@@ -178,6 +180,8 @@ fun UserItem(
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
+
+        Text(text = user.presenceStatus.value)
     }
 }
 
@@ -188,8 +192,8 @@ private fun LobbyScreenPreview() {
         LobbyScreen(
             uiState = LobbyUiState(
                 users = listOf(
-                    User(username = "User 1"),
-                    User(username = "User 2"),
+                    User(username = "User 1", presenceStatus = PresenceStatus.ONLINE),
+                    User(username = "User 2", presenceStatus = PresenceStatus.OFFLINE),
                 ),
             ),
             onInviteClick = {},

@@ -109,7 +109,7 @@ fun LoginScreen(
             singleLine = true,
             isError = uiState.errorMessage != null,
             label = { Text("Пароль") },
-            visualTransformation = PasswordVisualTransformation(),
+           // visualTransformation = PasswordVisualTransformation(), // скрытие пароля
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done,

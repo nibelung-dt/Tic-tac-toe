@@ -1,5 +1,6 @@
 package com.tarasov.tic_tac_toe.screens
 
+import com.tarasov.tic_tac_toe.data.PresenceStatus
 import com.tarasov.tic_tac_toe.data.User
 import com.tarasov.tic_tac_toe.data.remote.ws.LobbyEvent
 import org.junit.Assert.assertEquals
@@ -7,8 +8,8 @@ import org.junit.Test
 
 class LobbyUiStateTest {
 
-    private val firstUser = User(username = "first")
-    private val secondUser = User(username = "second")
+    private val firstUser = User(username = "first", presenceStatus = PresenceStatus.ONLINE)
+    private val secondUser = User(username = "second", presenceStatus = PresenceStatus.OFFLINE)
 
     @Test
     fun `snapshot replaces users and clears errors`() {

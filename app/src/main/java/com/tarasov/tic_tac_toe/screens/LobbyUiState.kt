@@ -1,5 +1,6 @@
 package com.tarasov.tic_tac_toe.screens
 
+import android.util.Log
 import com.tarasov.tic_tac_toe.data.User
 import com.tarasov.tic_tac_toe.data.remote.ws.LobbyEvent
 
@@ -21,7 +22,10 @@ internal fun LobbyUiState.applyLobbyEvent(event: LobbyEvent): LobbyUiState {
         LobbyEvent.Type.SNAPSHOT -> event.users.orEmpty()
 
         LobbyEvent.Type.USER_ONLINE -> {
+            Log.d("MY_LOG", "LobbyEvent.Type.USER_ONLINE ->" )
             val user = event.user ?: return this
+
+
             users.filterNot { it.username == user.username } + user
         }
 
