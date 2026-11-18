@@ -24,7 +24,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.tarasov.tic_tac_toe.data.PresenceStatus
 import com.tarasov.tic_tac_toe.data.User
 import com.tarasov.tic_tac_toe.ui.theme.TictactoeTheme
 import org.koin.androidx.compose.koinViewModel
@@ -43,7 +42,7 @@ fun LobbyRoute(
     LobbyScreen(
         uiState = uiState,
         onInviteClick = { id -> viewModel.inviteToGame(id) },
-        onRetryClick = viewModel::loadActiveUsers,
+        onRetryClick = viewModel::getUsers,
         onEnterToGame = onEnterToGame,
         modifier = modifier
     )
@@ -61,30 +60,7 @@ fun LobbyScreen(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
-        // Приветствие из WebSocket и ошибка сокета — над списком игроков.
-        if (uiState.greeting != null || uiState.socketError != null) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                uiState.greeting?.let { greeting ->
-                    Text(
-                        text = greeting,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                }
-                uiState.socketError?.let { error ->
-                    Text(
-                        text = error,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
-        }
+        Greeting(uiState)
 
         Box(
             modifier = Modifier
@@ -115,6 +91,33 @@ fun LobbyScreen(
                         Spacer(modifier = Modifier.height(10.dp))
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun Greeting(uiState: LobbyUiState) {
+    if (uiState.greeting != null || uiState.socketError != null) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            uiState.greeting?.let { greeting ->
+                Text(
+                    text = greeting,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+            uiState.socketError?.let { error ->
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
         }
     }
@@ -180,8 +183,6 @@ fun UserItem(
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
-
-        Text(text = user.presenceStatus.value)
     }
 }
 
@@ -192,8 +193,8 @@ private fun LobbyScreenPreview() {
         LobbyScreen(
             uiState = LobbyUiState(
                 users = listOf(
-                    User(username = "User 1", presenceStatus = PresenceStatus.ONLINE),
-                    User(username = "User 2", presenceStatus = PresenceStatus.OFFLINE),
+                    User(id = 1, username = "User 1"),
+                    User(id = 2, username = "User 2"),
                 ),
             ),
             onInviteClick = {},
@@ -215,3 +216,4 @@ private fun LobbyScreenErrorPreview() {
         )
     }
 }
+

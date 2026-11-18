@@ -16,22 +16,28 @@ data class LobbyUiState(
     val socketError: String? = null,
 )
 
-/** Применяет событие лобби к текущему списку онлайн-пользователей. */
+/**
+ * Применяет событие лобби к текущему списку онлайн-пользователей.
+ *
+ * Идентификатор — [User.id]: два разных аккаунта могут называться одинаково.
+ */
 internal fun LobbyUiState.applyLobbyEvent(event: LobbyEvent): LobbyUiState {
+    Log.d(
+        "MY_LOG",
+        "LobbyEvent: type=${event.type}, user=${event.user?.username}, users=${event.users?.size}",
+    )
+
     val updatedUsers = when (event.type) {
         LobbyEvent.Type.SNAPSHOT -> event.users.orEmpty()
 
         LobbyEvent.Type.USER_ONLINE -> {
-            Log.d("MY_LOG", "LobbyEvent.Type.USER_ONLINE ->" )
             val user = event.user ?: return this
-
-
-            users.filterNot { it.username == user.username } + user
+            users.filterNot { it.id == user.id } + user
         }
 
         LobbyEvent.Type.USER_OFFLINE -> {
             val user = event.user ?: return this
-            users.filterNot { it.username == user.username }
+            users.filterNot { it.id == user.id }
         }
     }
 

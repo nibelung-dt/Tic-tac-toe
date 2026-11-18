@@ -1,6 +1,5 @@
 package com.tarasov.tic_tac_toe.screens
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tarasov.tic_tac_toe.data.ApiResult
@@ -25,17 +24,16 @@ class LobbyViewModel(
     val uiState: StateFlow<LobbyUiState> = _uiState.asStateFlow()
 
     init {
-        observeSocketEvents()
-        loadActiveUsers()
-        // Токен уже сохранён репозиторием логина — подключаемся и ждём /app/greeting.
         websocketRepository.connect()
+        observeSocketEvents()
+        getUsers()
     }
 
-    fun loadActiveUsers() {
+    fun getUsers() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            when (val result = lobbyRepository.getActiveUsers()) {
+            when (val result = lobbyRepository.getUsers()) {
                 is ApiResult.Success -> _uiState.update {
                     it.copy(users = result.data, isLoading = false, errorMessage = null)
                 }
@@ -71,18 +69,11 @@ class LobbyViewModel(
         }
     }
 
-    /**
-     * Подписка на события сокета. Коллектор стартует синхронно (UNDISPATCHED),
-     * поэтому к моменту connect() он уже подписан и ни приветствие,
-     * ни ошибка подключения не теряются.
-     */
     private fun observeSocketEvents() {
         viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
             websocketRepository.events.collect { event ->
                 when (event) {
                     is WebsocketEvent.Greeting -> _uiState.update {
-                        Log.d("MY_LOG", "event.text = ${event.text}")
-
                         it.copy(greeting = event.text, socketError = null)
                     }
 
