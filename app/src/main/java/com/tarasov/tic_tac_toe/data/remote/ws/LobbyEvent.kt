@@ -7,6 +7,8 @@ import kotlinx.serialization.Serializable
 /**
  * Событие лобби.
  *
+ * Приходит с destination `/lobby` (без префикса `/app`).
+ *
  * SNAPSHOT — полный список онлайн-пользователей в [users].
  * USER_ONLINE — пользователь зашёл в сеть, данные находятся в [user].
  * USER_OFFLINE — пользователь вышел из сети, данные находятся в [user].
