@@ -1,9 +1,15 @@
 package com.tarasov.tic_tac_toe.data.remote.ws
 
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -20,6 +26,9 @@ import java.util.concurrent.atomic.AtomicLong
  * и разбор входящих MESSAGE/ERROR. Heartbeat отключён (`heart-beat:0,0`),
  * живость TCP-соединения поддерживает ping OkHttp.
  *
+ * При обрыве соединения клиент сам переподключается с экспоненциальным backoff
+ * и восстанавливает активные подписки в новой STOMP-сессии.
+ *
  * События отдаются через [events] — их слушает репозиторий и превращает
  * в доменные события.
  */
@@ -27,7 +36,6 @@ class StompClient(
     private val okHttpClient: OkHttpClient,
     private val url: String,
 ) {
-
     sealed interface Event {
         data object Connected : Event
 
@@ -49,6 +57,9 @@ class StompClient(
     private val pendingFrames = ArrayDeque<String>()
     private val pendingLock = Any()
 
+    /** Активные подписки: восстанавливаются после переподключения. */
+    private val activeSubscriptions = LinkedHashMap<String, String>()
+
     @Volatile
     private var webSocket: WebSocket? = null
 
@@ -57,6 +68,17 @@ class StompClient(
 
     @Volatile
     private var isConnected = false
+
+    /** Сколько раз подряд переподключались без успешного CONNECTED. */
+    @Volatile
+    private var reconnectAttempts = 0
+
+    /** Отменяет запланированное переподключение, если пользователь сам вызвал disconnect(). */
+    @Volatile
+    private var reconnectJob: Job? = null
+
+    /** Скоуп для отложенного переподключения; живёт столько же, сколько клиент. */
+    private val reconnectScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
      * Открывает WebSocket и сразу отправляет STOMP CONNECT с JWT.
@@ -77,6 +99,12 @@ class StompClient(
         webSocket = null
         previous?.cancel()
 
+        // Счётчик попыток начинаем с нуля: это явное подключение, а не реконнект.
+        reconnectAttempts = 0
+        openSocket()
+    }
+
+    private fun openSocket() {
         webSocket = okHttpClient.newWebSocket(
             Request.Builder().url(url).build(),
             Listener(),
@@ -84,21 +112,25 @@ class StompClient(
     }
 
     /**
-     * Подписка на destination. Для @SubscribeMapping достаточно подписаться
-     * на /app/... — ответ придёт в эту же сессию без участия брокера.
+     * Подписка на destination.
+     *
+     * Структура destination зависит от того, кто отвечает:
+     * - `@SubscribeMapping` / `@MessageMapping` — через application prefix (`/app/...`);
+     * - рассылка сервером через `SimpMessagingTemplate` — напрямую (`/lobby`, `/topic/...`).
+     *
      * @return id подписки (сервер вернёт его в заголовке subscription).
      */
     fun subscribe(destination: String): String {
         val id = "sub-${subscriptionIds.incrementAndGet()}"
+
+        // Подписка может быть вызвана сразу из обработчика CONNECTED:
+        // фиксируем её в журнале, чтобы при переподключении восстановить.
+        synchronized(pendingLock) {
+            activeSubscriptions[id] = destination
+        }
+
         Log.d(TAG, "SUBSCRIBE $destination (id=$id)")
-        sendFrame(
-            command = "SUBSCRIBE",
-            headers = mapOf(
-                "id" to id,
-                "destination" to destination,
-                "ack" to "auto",
-            ),
-        )
+        sendSubscriptionFrame(id, destination)
         return id
     }
 
@@ -119,6 +151,9 @@ class StompClient(
     }
 
     fun disconnect() {
+        reconnectJob?.cancel()
+        reconnectJob = null
+
         val socket = webSocket ?: return
         Log.d(TAG, "Disconnecting")
 
@@ -126,6 +161,10 @@ class StompClient(
             isConnected = false
             // DISCONNECT отправляем напрямую: sendFrame() смотрит на webSocket.
             socket.send(buildFrame(command = "DISCONNECT", headers = emptyMap(), body = ""))
+        }
+
+        synchronized(pendingLock) {
+            activeSubscriptions.clear()
         }
 
         webSocket = null
@@ -187,8 +226,66 @@ class StompClient(
                 webSocket?.send(pendingFrames.removeFirst())
             }
         }
+        reconnectAttempts = 0
+        reconnectJob?.cancel()
+        reconnectJob = null
+
         Log.d(TAG, "STOMP CONNECTED")
         eventsChannel.trySend(Event.Connected)
+
+        // Новое соединение — новая STOMP-сессия: подписки старой сессии
+        // на сервере уже не действуют, отправляем их заново.
+        restoreSubscriptions()
+    }
+
+    private fun restoreSubscriptions() {
+        val subscriptions = synchronized(pendingLock) {
+            activeSubscriptions.toList()
+        }
+        if (subscriptions.isEmpty()) return
+
+        Log.d(TAG, "Restoring ${subscriptions.size} subscription(s)")
+        subscriptions.forEach { (id, destination) ->
+            sendSubscriptionFrame(id, destination)
+        }
+    }
+
+    private fun sendSubscriptionFrame(id: String, destination: String) {
+        sendFrame(
+            command = "SUBSCRIBE",
+            headers = mapOf(
+                "id" to id,
+                "destination" to destination,
+                "ack" to "auto",
+            ),
+        )
+    }
+
+    /**
+     * Планирует переподключение с экспоненциальным backoff.
+     *
+     * Без этого обрыв (Connection reset, рестарт бэкенда, таймаут прокси)
+     * оставлял лобби «замороженным»: подписки уже не действуют,
+     * а новые события прийти не могут.
+     */
+    private fun scheduleReconnect() {
+        // Токена нет — переподключаться бессмысленно.
+        if (jwt.isNullOrBlank()) return
+
+        if (reconnectJob?.isActive == true) return
+
+        val attempt = reconnectAttempts++
+        val delayMillis = (BASE_RECONNECT_DELAY_MS shl attempt.coerceAtMost(MAX_BACKOFF_SHIFT))
+            .coerceAtMost(MAX_RECONNECT_DELAY_MS)
+        Log.d(TAG, "Reconnect in ${delayMillis}ms (attempt ${attempt + 1})")
+
+        reconnectJob = reconnectScope.launch {
+            delay(delayMillis)
+            // Пока ждали, пользователь мог уйти с экрана или переподключиться вручную.
+            if (isConnected) return@launch
+            Log.d(TAG, "Reconnecting...")
+            openSocket()
+        }
     }
 
     /** Колбэки старого (уже заменённого) соединения игнорируем. */
@@ -206,6 +303,7 @@ class StompClient(
                 Log.e(TAG, "No JWT for WebSocket CONNECT")
                 eventsChannel.trySend(Event.Failure("Нет JWT для подключения к WebSocket"))
                 webSocket.close(POLICY_VIOLATION, "no token")
+                scheduleReconnect()
                 return
             }
 
@@ -237,7 +335,10 @@ class StompClient(
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
             if (!isCurrent(webSocket)) return
             isConnected = false
+            Log.d(TAG, "WebSocket closed: $code $reason")
             eventsChannel.trySend(Event.Disconnected)
+            // Штатное закрытие сервером (например, таймаут) — тоже повод вернуться.
+            scheduleReconnect()
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -246,6 +347,7 @@ class StompClient(
             val reason = t.message?.takeIf { it.isNotBlank() } ?: response?.message
             Log.e(TAG, "WebSocket failure: $reason", t)
             eventsChannel.trySend(Event.Failure(reason, t))
+            scheduleReconnect()
         }
 
         private fun appendChunk(chunk: String) {
@@ -299,5 +401,10 @@ class StompClient(
         const val TAG = "MY_LOG"
         const val NORMAL_CLOSURE = 1000
         const val POLICY_VIOLATION = 1008
+
+        /** 1s, 2s, 4s, ... — пауза перед переподключением. */
+        const val BASE_RECONNECT_DELAY_MS = 1_000L
+        const val MAX_RECONNECT_DELAY_MS = 30_000L
+        const val MAX_BACKOFF_SHIFT = 5
     }
 }

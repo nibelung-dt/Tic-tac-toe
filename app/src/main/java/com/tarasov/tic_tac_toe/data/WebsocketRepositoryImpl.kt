@@ -1,5 +1,6 @@
 package com.tarasov.tic_tac_toe.data
 
+import android.util.Log
 import com.tarasov.tic_tac_toe.data.remote.ws.Greeting
 import com.tarasov.tic_tac_toe.data.remote.ws.LobbyEvent
 import com.tarasov.tic_tac_toe.data.remote.ws.StompClient
@@ -60,6 +61,10 @@ class WebsocketRepositoryImpl(
                 // @SubscribeMapping: сервер отвечает прямо в эту сессию,
                 // /app — префикс приложения, заданный в конфигурации Spring.
                 stompClient.subscribe(GREETING_DESTINATION)
+                // /lobby — destination брокера: сюда приходит SNAPSHOT,
+                // а дальше USER_ONLINE / USER_OFFLINE по мере подключения игроков.
+                stompClient.subscribe(LOBBY_SNAPSHOT_DESTINATION)
+
                 stompClient.subscribe(LOBBY_DESTINATION)
             }
 
@@ -68,8 +73,24 @@ class WebsocketRepositoryImpl(
                     _events.tryEmit(WebsocketEvent.Greeting(decodeGreeting(event.body)))
                 }
 
+                //TODO можно объединить LOBBY_DESTINATION и LOBBY_SNAPSHOT_DESTINATION
                 LOBBY_DESTINATION -> {
+                    Log.d("MY_LOG", "LOBBY_DESTINATION: event.body = ${event.body}")
+                    Log.d("MY_LOG", "LOBBY_DESTINATION: event.destination = ${event.destination}")
                     val lobbyEvent = decodeLobbyEvent(event.body)
+                    if (lobbyEvent != null) {
+                        _events.tryEmit(WebsocketEvent.LobbyEventReceived(lobbyEvent))
+                    } else {
+                        _events.tryEmit(WebsocketEvent.Error("Не удалось разобрать событие лобби"))
+                    }
+                }
+                LOBBY_SNAPSHOT_DESTINATION -> {
+                    Log.d("MY_LOG", "LOBBY_SNAPSHOT_DESTINATION: lobbyEvent.users")
+
+                    val lobbyEvent = decodeLobbyEvent(event.body)
+
+                    Log.d("MY_LOG", "lobbyEvent.users = ${lobbyEvent?.users}")
+
                     if (lobbyEvent != null) {
                         _events.tryEmit(WebsocketEvent.LobbyEventReceived(lobbyEvent))
                     } else {
@@ -98,10 +119,23 @@ class WebsocketRepositoryImpl(
 
     private fun decodeLobbyEvent(body: String): LobbyEvent? =
         runCatching { json.decodeFromString(LobbyEvent.serializer(), body) }
+            .onFailure { Log.e(TAG, "Не удалось разобрать LobbyEvent: $body", it) }
             .getOrNull()
 
     private companion object {
+        /**
+         * @SubscribeMapping("/greeting") — подписка идёт через application prefix.
+         */
         const val GREETING_DESTINATION = "/app/greeting"
-        const val LOBBY_DESTINATION = "/app/lobby"
+
+        /**
+         * События лобби сервер рассылает через SimpMessagingTemplate
+         * в `/lobby` (broker destination, без application prefix).
+         */
+        const val LOBBY_SNAPSHOT_DESTINATION = "/app/lobby" // если сделать /lobby , то сервер возвращает 403
+        const val LOBBY_DESTINATION = "/topic/lobby"
+
+        const val TAG = "MY_LOG"
     }
 }
+// snapshot
